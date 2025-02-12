@@ -23,7 +23,7 @@ class RAGSystem:
         self.hybrid_retriever = HybridRetriever()
         self.document_embeddings = []
         self.documents = []
-        ㄴ
+        
     def initialize(self):
         """문서 데이터 로드 및 임베딩 생성"""
         try:
@@ -82,43 +82,44 @@ class RAGSystem:
     def retrieve_relevant_documents(self, query: str, top_k: int = 9) -> List[Dict[str, Any]]:
         """하이브리드 검색을 통한 관련 문서 검색"""
         try:
-            # 임베딩 기반 유사도 계산
+            # 1. 임베딩 기반 검색
             query_embedding = self.embedding_agent.create_embedding(query)
-            embedding_similarities = [
-                self.embedding_agent.calculate_similarity(query_embedding, doc_emb)
-                for doc_emb in self.document_embeddings
-            ]
-            
-            # BM25 점수 계산
-            bm25_scores = self.hybrid_retriever.get_bm25_scores(query, self.documents)
-            
-            # 점수 결합
-            combined_scores = self.hybrid_retriever.combine_scores(
-                embedding_similarities, 
-                bm25_scores
+            embedding_results = self.embedding_agent.find_most_similar(
+                query_embedding, 
+                self.document_embeddings,
+                top_k=top_k * 2  # 더 많은 후보 검색
             )
             
-            # 상위 문서 선택
-            doc_scores = [
-                {'index': i, 'score': score} 
-                for i, score in enumerate(combined_scores)
-            ]
-            doc_scores.sort(key=lambda x: x['score'], reverse=True)
+            # 2. BM25 기반 검색
+            bm25_scores = self.hybrid_retriever.get_bm25_scores(query, self.documents)
+            bm25_results = sorted(
+                [(i, score) for i, score in enumerate(bm25_scores)],
+                key=lambda x: x[1],
+                reverse=True
+            )[:top_k * 2]
             
-            # 결과 형식화
+            # 3. 교집합 기반 결과 선택
+            common_docs = set(
+                doc['index'] for doc in embedding_results
+            ).intersection(
+                idx for idx, _ in bm25_results
+            )
+            
             results = []
-            for doc in doc_scores[:top_k]:
-                if doc['score'] > 0.75:  # 임계값 적용
-                    results.append({
-                        'document': self.documents[doc['index']],
-                        'similarity': doc['score']
-                    })
-            
-            logger.info(f"Found {len(results)} relevant documents using hybrid search")
+            for doc_idx in common_docs:
+                if len(results) >= top_k:
+                    break
+                    
+                results.append({
+                    'document': self.documents[doc_idx],
+                    'similarity': embedding_results[0]['similarity']  # 임베딩 유사도 사용
+                })
+                
+            logger.info(f"Found {len(results)} documents in intersection")
             return results
             
         except Exception as e:
-            logger.error(f"Error in hybrid document retrieval: {str(e)}")
+            logger.error(f"Error in document retrieval: {str(e)}")
             raise
 
     def _extract_keywords(self, text: str) -> List[str]:
@@ -144,31 +145,39 @@ class RAGSystem:
 
     
     def validate_answer(self, predicted_answer: str, context_docs: List[Dict]) -> bool:
-        """답변 검증 로직 강화"""
         if not context_docs:
             return True
             
-        # 가중치 기반 투표 시스템
-        answer_votes = {'A': 0, 'B': 0, 'C': 0, 'D': 0}
+        # 가중치 점수 계산
+        answer_scores = {'A': 0.0, 'B': 0.0, 'C': 0.0, 'D': 0.0}
+        total_weight = 0.0
         
         for doc in context_docs:
             if 'Answer: ' in doc['document']:
                 answer_num = doc['document'].split('Answer: ')[1][0]
                 answer_letter = chr(ord('A') + int(answer_num) - 1)
-                # 유사도에 기반한 가중치 적용
-                weight = doc['similarity']
-                answer_votes[answer_letter] += weight
+                
+                # 유사도 점수를 가중치로 사용
+                weight = doc['similarity'] ** 2  # 제곱하여 높은 유사도에 더 큰 가중치
+                answer_scores[answer_letter] += weight
+                total_weight += weight
         
-        if not answer_votes:
+        if total_weight == 0:
             return True
             
-        # 최다 득표 답안 선택
-        best_answer = max(answer_votes.items(), key=lambda x: x[1])[0]
-        confidence = answer_votes[best_answer] / sum(answer_votes.values())
+        # 정규화된 점수 계산
+        normalized_scores = {
+            k: v/total_weight for k, v in answer_scores.items()
+        }
         
-        # 높은 신뢰도의 답안만 채택
-        if confidence > 0.6:
-            return predicted_answer == best_answer
+        # 최고 점수와 두 번째 점수의 차이 계산
+        sorted_scores = sorted(normalized_scores.items(), key=lambda x: x[1], reverse=True)
+        score_diff = sorted_scores[0][1] - sorted_scores[1][1]
+        
+        # 점수 차이가 충분히 크면 검증
+        if score_diff > 0.3:  # 임계값 상향 조정
+            return predicted_answer == sorted_scores[0][0]
+        
         return True
 
     def generate_answer(self, question: str, options: Dict[str, str]) -> Dict[str, Any]:
@@ -228,32 +237,32 @@ class RAGSystem:
         return "\n".join([f"{k}) {v}" for k, v in options.items()])
 
     def _construct_prompt(self, question: str, options: Dict[str, str], context: str) -> str:
-        """프롬프트 구성 개선"""
         options_text = "\n".join([f"{k}) {v}" for k, v in options.items()])
         
-        return f"""You are a criminal law expert tasked with answering multiple-choice questions.
+        return f"""You are a highly qualified criminal law expert tasked with selecting the most accurate answer to a multiple-choice question.
 
-    Background Context:
+    Context Information (Pay careful attention to these similar cases and principles):
     {context}
 
-    Current Question to Answer:
+    Question to Analyze:
     {question}
 
     Available Options:
     {options_text}
 
-    Instructions for Analysis:
-    1. Read the question and context carefully
-    2. Consider the criminal law principles involved
-    3. Evaluate each option based on the context provided
-    4. Select the most accurate answer
+    Reasoning Process:
+    1. First, carefully analyze the question and understand what it's asking about
+    2. Compare each option against the provided context
+    3. Consider criminal law principles and terminology
+    4. Find direct matches or analogous cases in the context
+    5. Select the option that best aligns with the context and legal principles
 
     Requirements:
-    - Provide ONLY a single letter (A, B, C, or D) as your answer
-    - Choose the best answer based on your expertise and the given context
-    - Do not provide explanations or reasoning
+    - Your response must be ONLY a single letter (A, B, C, or D)
+    - Choose the most accurate answer based on the context and criminal law expertise
+    - Do not explain your reasoning, only provide the answer letter
 
-    Your Answer (A/B/C/D): """
+    Your Final Answer (A/B/C/D): """
 
 def main():
     rag = RAGSystem()

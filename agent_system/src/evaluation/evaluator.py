@@ -185,10 +185,22 @@ class KMMLUEvaluator:
             raise
         
 def main():
-    evaluator = KMMLUEvaluator()
-    evaluator.initialize()
-    results = evaluator.evaluate_test_set()
-    logger.info(f"Evaluation completed with accuracy: {results['accuracy']:.2%}")
+    try:
+        evaluator = KMMLUEvaluator()
+        evaluator.initialize()
+        logger.info("Evaluation system initialized")
+        
+        # Test 평가 수행
+        results = evaluator.evaluate_test_set()
+        logger.info(f"Evaluation completed with accuracy: {results['accuracy']:.2%}")
+        
+        # 결과 저장
+        evaluator.save_results(results)
+        logger.info("Results saved successfully")
+    
+    except Exception as e:
+        logger.error(f"Error in evaluation: {str(e)}")
+        raise
 
 if __name__ == "__main__":
     main()

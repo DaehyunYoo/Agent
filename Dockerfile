@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Poetry 설치
+# Poetry 설치 
 RUN pip install poetry==1.7.1
 
 # 프로젝트 의존성 파일 복사
@@ -16,7 +16,11 @@ COPY pyproject.toml poetry.lock ./
 
 # Poetry 설정 및 의존성 설치
 RUN poetry config virtualenvs.create false \
-    && poetry install --no-root --no-dev
+    # && poetry install --no-root --no-dev
+    && poetry install --no-interaction
+
+# rank_bm25 설치
+RUN pip install rank_bm25
 
 # 소스 코드 복사
 COPY . .

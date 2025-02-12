@@ -3,19 +3,21 @@ from typing import List, Dict, Any
 import numpy as np
 
 class HybridRetriever:
-    """하이브리드 검색 시스템"""
-    
     def __init__(self):
         self.bm25 = None
         self.tokenized_corpus = None
+        self.document_embeddings = None
         
-    def prepare_corpus(self, documents: List[str]):
-        """BM25를 위한 코퍼스 준비"""
+    def prepare_corpus(self, documents: List[str], document_embeddings: List[List[float]]):
+        """BM25를 위한 코퍼스 준비 및 임베딩 저장"""
         # 문서를 토큰화
         self.tokenized_corpus = [doc.lower().split() for doc in documents]
         # BM25 모델 초기화
         self.bm25 = BM25Okapi(self.tokenized_corpus)
+        # 문서 임베딩 저장
+        self.document_embeddings = document_embeddings
         
+                
     def get_bm25_scores(self, query: str, documents: List[str]) -> List[float]:
         """BM25 점수 계산"""
         tokenized_query = query.lower().split()

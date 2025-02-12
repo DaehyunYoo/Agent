@@ -4,6 +4,7 @@ import numpy as np
 from .llm import LLMAgent
 from .embedding import EmbeddingAgent
 from ..data.loader import KMMLUDataLoader
+from .hybrid_retriever import HybridRetriever
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,9 +20,10 @@ class RAGSystem:
         self.llm = LLMAgent()
         self.embedding_agent = EmbeddingAgent()
         self.data_loader = KMMLUDataLoader()
+        self.hybrid_retriever = HybridRetriever()
         self.document_embeddings = []
         self.documents = []
-        
+        ㄴ
     def initialize(self):
         """문서 데이터 로드 및 임베딩 생성"""
         try:
@@ -38,6 +40,9 @@ class RAGSystem:
             self.document_embeddings = self.embedding_agent.create_batch_embeddings(
                 self.documents
             )
+            
+            # 하이브리드 검색 준비
+            self.hybrid_retriever.prepare_corpus(self.documents, self.document_embeddings)
             
             logger.info(f"Initialized RAG system with {len(self.documents)} documents")
             
@@ -75,36 +80,45 @@ class RAGSystem:
             raise
 
     def retrieve_relevant_documents(self, query: str, top_k: int = 9) -> List[Dict[str, Any]]:
-        """쿼리와 관련된 문서 검색 개선"""
+        """하이브리드 검색을 통한 관련 문서 검색"""
         try:
-            # 쿼리 전처리 및 강화
-            enhanced_query = self._enhance_query(query)
+            # 임베딩 기반 유사도 계산
+            query_embedding = self.embedding_agent.create_embedding(query)
+            embedding_similarities = [
+                self.embedding_agent.calculate_similarity(query_embedding, doc_emb)
+                for doc_emb in self.document_embeddings
+            ]
             
-            # 가장 유사한 문서 찾기 (top_k 증가)
-            similar_docs = self.embedding_agent.find_most_similar(
-                enhanced_query,
-                self.document_embeddings,
-                top_k=top_k,
-                similarity_threshold=0.75  # 임계값 조정
+            # BM25 점수 계산
+            bm25_scores = self.hybrid_retriever.get_bm25_scores(query, self.documents)
+            
+            # 점수 결합
+            combined_scores = self.hybrid_retriever.combine_scores(
+                embedding_similarities, 
+                bm25_scores
             )
             
-            # 결과 형식화 및 필터링
-            results = []
-            for doc in similar_docs:
-                if doc['similarity'] > 0.75:
-                    doc_text = self.documents[doc['index']]
-                    # 문서 관련성 검증
-                    if self._verify_document_relevance(query, doc_text):
-                        results.append({
-                            'document': doc_text,
-                            'similarity': doc['similarity']
-                        })
+            # 상위 문서 선택
+            doc_scores = [
+                {'index': i, 'score': score} 
+                for i, score in enumerate(combined_scores)
+            ]
+            doc_scores.sort(key=lambda x: x['score'], reverse=True)
             
-            logger.info(f"Found {len(results)} relevant documents")
+            # 결과 형식화
+            results = []
+            for doc in doc_scores[:top_k]:
+                if doc['score'] > 0.75:  # 임계값 적용
+                    results.append({
+                        'document': self.documents[doc['index']],
+                        'similarity': doc['score']
+                    })
+            
+            logger.info(f"Found {len(results)} relevant documents using hybrid search")
             return results
-                
+            
         except Exception as e:
-            logger.error(f"Error retrieving documents: {str(e)}")
+            logger.error(f"Error in hybrid document retrieval: {str(e)}")
             raise
 
     def _extract_keywords(self, text: str) -> List[str]:

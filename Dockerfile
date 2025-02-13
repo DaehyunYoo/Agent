@@ -16,7 +16,6 @@ COPY pyproject.toml poetry.lock ./
 
 # Poetry 설정 및 의존성 설치
 RUN poetry config virtualenvs.create false \
-    # && poetry install --no-root --no-dev
     && poetry install --no-interaction
 
 # rank_bm25 설치

@@ -113,7 +113,3 @@ services:
   - evaluation_results.json: 상세 평가 결과
   - evaluation_metrics.csv: 주요 성능 지표
   - batch_api_input/output.jsonl: API 입출력 기록
-
-## 라이선스
-
-MIT License

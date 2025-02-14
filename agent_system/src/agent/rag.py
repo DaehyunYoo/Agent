@@ -236,31 +236,50 @@ class RAGSystem:
         """
         return "\n".join([f"{k}) {v}" for k, v in options.items()])
 
+    # Comparison Prompting
     def _construct_prompt(self, question: str, options: Dict[str, str], context: str) -> str:
         options_text = "\n".join([f"{k}) {v}" for k, v in options.items()])
         
-        return f"""You are a highly qualified criminal law expert tasked with selecting the most accurate answer to a multiple-choice question.
+        return f"""[Role]: You are a highly qualified criminal law expert specializing in comparative legal analysis.
 
-    Context Information (Pay careful attention to these similar cases and principles):
+    [Context Information]: 
+    Review these similar cases and legal principles carefully:
     {context}
 
-    Question to Analyze:
+    [Current Question]:
     {question}
 
-    Available Options:
+    [Options for Analysis]:
     {options_text}
 
-    Reasoning Process:
-    1. First, carefully analyze the question and understand what it's asking about
-    2. Compare each option against the provided context
-    3. Consider criminal law principles and terminology
-    4. Find direct matches or analogous cases in the context
-    5. Select the option that best aligns with the context and legal principles
+    [Comparative Analysis Framework]:
+    1. Pattern Recognition:
+    - Identify recurring legal principles in the context cases
+    - Find similar fact patterns or legal questions
+    
+    2. Similarity Analysis:
+    - Match key elements of current question with context cases
+    - Note aligned legal principles and reasoning patterns
+    
+    3. Distinction Analysis:
+    - Identify any meaningful differences from context cases
+    - Consider how differences affect the application of legal principles
 
-    Requirements:
-    - Your response must be ONLY a single letter (A, B, C, or D)
-    - Choose the most accurate answer based on the context and criminal law expertise
-    - Do not explain your reasoning, only provide the answer letter
+    4. Option Evaluation:
+    - Compare each option against similar cases
+    - Assess which option best matches established patterns
+    - Consider both similarities and distinctions
+
+    [Decision Process]:
+    1. First, establish patterns from context cases
+    2. Then, map current question to these patterns
+    3. Finally, select the option that best aligns with established legal patterns
+
+    [Response Requirements]:
+    - Provide ONLY a single letter (A, B, C, or D)
+    - Base your choice on pattern matching with context cases
+    - Do not explain your reasoning
+    - Focus on similarities with precedent cases
 
     Your Final Answer (A/B/C/D): """
 

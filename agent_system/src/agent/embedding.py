@@ -24,7 +24,7 @@ class EmbeddingAgent:
         self.model = "text-embedding-3-small"
     
     def create_embedding(self, text: str) -> List[float]:
-        """단일 텍스트의 임베딩을 생성합니다."""
+        """단일 텍스트의 임베딩을 생성"""
         try:
             # 텍스트 전처리 및 강화
             processed_text = self._enhance_query(text)
@@ -40,7 +40,7 @@ class EmbeddingAgent:
             raise
 
     def create_batch_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """여러 텍스트의 임베딩을 일괄 생성합니다."""
+        """여러 텍스트의 임베딩을 일괄 생성"""
         try:
             # 모든 텍스트 전처리 및 강화
             processed_texts = [self._enhance_query(text) for text in texts]
@@ -56,7 +56,7 @@ class EmbeddingAgent:
             raise
 
     def calculate_similarity(self, embedding1: List[float], embedding2: List[float]) -> float:
-        """두 임베딩 벡터 간의 유사도를 계산합니다."""
+        """두 임베딩 벡터 간의 유사도 계산"""
         try:
             vec1 = np.array(embedding1)
             vec2 = np.array(embedding2)
@@ -76,10 +76,10 @@ class EmbeddingAgent:
     def find_most_similar(self, 
                         query_embedding: List[float], 
                         candidate_embeddings: List[List[float]], 
-                        top_k: int = 7,           # top_k 기본값 증가
+                        top_k: int = 9,           # top_k 기본값 증가
                         similarity_threshold: float = 0.7  # 유사도 임계값 추가
                         ) -> List[Dict[str, Any]]:
-        """쿼리 임베딩과 가장 유사한 상위 k개의 후보 임베딩을 찾습니다."""
+        """쿼리 임베딩과 가장 유사한 상위 k개의 후보 임베딩 찾기"""
         try:
             similarities = []
             for idx, candidate in enumerate(candidate_embeddings):

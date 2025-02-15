@@ -63,7 +63,7 @@ class RAGSystem:
 
     def _enhance_query(self, query: str) -> List[float]:
         """
-        검색 쿼리를 강화합니다.
+        검색 쿼리를 강화
         
         Args:
             query (str): 원본 쿼리

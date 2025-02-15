@@ -8,13 +8,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class KMMLUDataLoader:
-    """KMMLU 데이터셋을 로드하고 관리하는 클래스"""
+    """KMMLU 데이터셋을 로드"""
     
     def __init__(self, data_dir: Optional[str] = None):
         """
         Args:
             data_dir (str, optional): 데이터 디렉토리 경로. 
-                                    기본값은 프로젝트 루트의 'data' 디렉토리
         """
         self.data_dir = Path(data_dir) if data_dir else Path(__file__).parents[3] / 'data'
         self.raw_dir = self.data_dir / 'raw'
@@ -40,7 +39,7 @@ class KMMLUDataLoader:
             raise
 
     def validate_data(self, df: pd.DataFrame) -> bool:
-        """데이터프레임의 구조와 내용을 검증합니다."""
+        """데이터프레임의 구조와 내용 검증"""
         required_columns = ['question', 'answer', 'A', 'B', 'C', 'D', 
                           'Category', 'Human Accuracy']
         
@@ -62,7 +61,7 @@ class KMMLUDataLoader:
         return True
 
     def get_question_answer_pairs(self) -> Tuple[list, list]:
-        """질문과 정답을 추출하여 반환합니다."""
+        """질문과 정답을 추출하여 반환"""
         df = self.load_criminal_law_test()
         
         if not self.validate_data(df):
@@ -85,7 +84,7 @@ class KMMLUDataLoader:
         return questions, answers
 
     def save_processed_data(self, df: pd.DataFrame, filename: str):
-        """처리된 데이터를 저장합니다."""
+        """처리된 데이터를 저장"""
         output_path = self.processed_dir / filename
         df.to_csv(output_path, index=False)
         logger.info(f"Saved processed data to {output_path}")

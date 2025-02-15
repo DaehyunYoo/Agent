@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 스크립트 실패 시 즉시 중단
+# 스크립트 실패 시 중단
 set -e
 
 echo "Starting KMMLU Agent System Evaluation..."
@@ -10,11 +10,11 @@ echo "Creating outputs directory..."
 mkdir -p /app/outputs
 
 # 평가 실행
-echo "Step: Running evaluation..."
+echo "Running evaluation..."
 python -m agent_system.src.evaluation.evaluator
 
 # 결과 확인
-echo "Step 4: Checking results..."
+echo "Checking results..."
 if [ -f "/app/outputs/evaluation_metrics.csv" ]; then
     echo "Evaluation completed"
     echo "Results files generated:"

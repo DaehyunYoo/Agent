@@ -60,31 +60,6 @@ class LLMAgent:
             logger.error(f"Error generating answer: {str(e)}")
             raise
 
-    def batch_generate_answers(self, prompts: List[str]) -> List[Dict[str, Any]]:
-        """
-        여러 프롬프트에 대한 응답을 일괄 처리합니다.
-        
-        Args:
-            prompts (List[str]): 처리할 프롬프트 리스트
-            
-        Returns:
-            List[Dict[str, Any]]: 각 프롬프트에 대한 응답 리스트
-        """
-        responses = []
-        
-        for prompt in prompts:
-            try:
-                response = self.generate_answer(prompt)
-                responses.append(response)
-            except Exception as e:
-                logger.error(f"Error in batch processing: {str(e)}")
-                responses.append({
-                    'answer': None,
-                    'error': str(e),
-                    'model': self.model
-                })
-                
-        return responses
 
     def extract_answer_letter(self, response: str) -> Optional[str]:
         """
@@ -123,32 +98,3 @@ class LLMAgent:
             
         return answer_map[extracted_answer] == correct_answer
     
-def test_llm_agent():
-    """LLM Agent 테스트 함수"""
-    test_prompt = """Answer the following multiple choice question about criminal law.
-    
-    Question: What is the primary purpose of criminal law?
-    
-    Options:
-    A) To resolve private disputes
-    B) To punish and deter criminal behavior
-    C) To regulate business contracts
-    D) To manage civil proceedings
-    
-    Provide your answer as a single letter (A, B, C, or D)."""
-    
-    try:
-        agent = LLMAgent()
-        response = agent.generate_answer(test_prompt)
-        
-        print(f"Model response: {response['answer']}")
-        print(f"Tokens used: {response['tokens_used']}")
-        
-        extracted_answer = agent.extract_answer_letter(response['answer'])
-        print(f"Extracted answer: {extracted_answer}")
-        
-    except Exception as e:
-        print(f"Test failed: {str(e)}")
-
-if __name__ == "__main__":
-    test_llm_agent()

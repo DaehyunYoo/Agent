@@ -5,6 +5,8 @@ from typing import List, Dict, Any
 import pandas as pd
 from ..agent.rag import RAGSystem
 from ..data.loader import KMMLUDataLoader
+from .timer import timer
+import time
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -186,21 +188,41 @@ class KMMLUEvaluator:
         
 def main():
     try:
-        evaluator = KMMLUEvaluator()
-        evaluator.initialize()
-        logger.info("Evaluation system initialized")
+        total_start_time = time.time()
         
-        # Test 평가 수행
-        results = evaluator.evaluate_test_set()
+        # 1. 시스템 초기화 시간 측정
+        with timer("System Initialization"):
+            evaluator = KMMLUEvaluator()
+            evaluator.initialize()
+        
+        # 2. 평가 수행 시간 측정 (batch API 응답 대기 시간 제외)
+        evaluation_start_time = time.time()
+        results = None
+        
+        with timer("Test Set Evaluation"):
+            results = evaluator.evaluate_test_set()
+        
+        evaluation_time = (time.time() - evaluation_start_time) / 60  # 분으로 변환
+        
+        # 3. 결과 저장 시간 측정
+        with timer("Results Saving"):
+            evaluator.save_results(results)
+        
+        # 4. 총 소요 시간 계산 및 로깅
+        total_time = (time.time() - total_start_time) / 60  # 분으로 변환
+        
+        # 최종 시간 정보 로깅
+        logger.info("\n=== Time Analysis ===")
+        logger.info(f"Total processing time: {total_time:.2f} minutes")
+        logger.info(f"Evaluation time (excluding API calls): {evaluation_time:.2f} minutes")
         logger.info(f"Evaluation completed with accuracy: {results['accuracy']:.2%}")
         
-        # 결과 저장
-        evaluator.save_results(results)
-        logger.info("Results saved successfully")
-    
     except Exception as e:
         logger.error(f"Error in evaluation: {str(e)}")
         raise
+
+if __name__ == "__main__":
+    main()
 
 if __name__ == "__main__":
     main()

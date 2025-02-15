@@ -24,7 +24,7 @@ python -m agent_system.src.evaluation.evaluator
 # 5. 결과 확인
 echo "Step 4: Checking results..."
 if [ -f "/app/outputs/evaluation_metrics.csv" ]; then
-    echo "Evaluation completed successfully!"
+    echo "Evaluation completed"
     echo "Results files generated:"
     echo "- evaluation_results.json"
     echo "- evaluation_metrics.csv"

@@ -13,7 +13,7 @@ class DataProcessor:
         self.loader = KMMLUDataLoader()
         
     def preprocess_questions(self, df: pd.DataFrame) -> List[Dict[str, Any]]:
-        """질문 데이터를 전처리하여 LLM에 적합한 형식으로 변환합니다."""
+        """질문 데이터를 전처리하여 LLM에 적합한 형식으로 변환"""
         processed_data = []
         
         for _, row in df.iterrows():
@@ -31,7 +31,7 @@ class DataProcessor:
         return processed_data
         
     def format_prompt(self, row: pd.Series) -> str:
-        """LLM을 위한 프롬프트 형식을 구성합니다."""
+        """LLM을 위한 프롬프트 형식을 구성"""
         return f"""Answer the following multiple choice question about criminal law. 
         Choose the most appropriate answer from options A, B, C, or D.
         
@@ -47,7 +47,7 @@ class DataProcessor:
         """
     
     def process_and_save(self):
-        """전체 데이터 처리 파이프라인을 실행합니다."""
+        """전체 데이터 처리 파이프라인 실행"""
         try:
             # 데이터 로드
             df = self.loader.load_criminal_law_test()

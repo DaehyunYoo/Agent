@@ -88,7 +88,7 @@ class LLMAgent:
 
     def extract_answer_letter(self, response: str) -> Optional[str]:
         """
-        모델 응답에서 답안 문자(A, B, C, D)를 추출합니다.
+        모델 응답에서 답안 문자(A, B, C, D)를 추출
         """
         if not response:
             return None
@@ -106,7 +106,7 @@ class LLMAgent:
 
     def validate_answer(self, model_answer: str, correct_answer: int) -> bool:
         """
-        모델의 답안이 정답과 일치하는지 확인합니다.
+        모델의 답안이 정답과 일치하는지 확인
         
         Args:
             model_answer (str): 모델이 생성한 답안 (A, B, C, D)

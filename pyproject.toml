@@ -5,7 +5,7 @@ description = "Agent System for KMMLU evaluation"
 authors = ["Daehyun"]
 license = "MIT"
 readme = "README.md"
-packages = [{include = "agent_system"}]  # 프로젝트 패키지 포함
+packages = [{include = "agent_system"}]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
@@ -13,8 +13,11 @@ openai = ">=1.61.1,<2.0.0"
 pandas = ">=2.2.3,<3.0.0"
 pytest = ">=8.3.4,<9.0.0"
 python-dotenv = ">=1.0.1,<2.0.0"
-numpy = "^2.2.2"
+numpy = ">=1.21.0,<1.26.5"
 rank-bm25 = ">=0.2.2"
+nltk = ">=3.8.1"
+scikit-learn = ">=1.3.0,<1.4.0"
+openai = ">=1.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"

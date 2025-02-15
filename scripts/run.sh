@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 스크립트 실패 시 중단
+# 스크립트 실패 시 즉시 중단
 set -e
 
 echo "Starting KMMLU Agent System Evaluation..."

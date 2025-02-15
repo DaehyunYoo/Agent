@@ -121,28 +121,6 @@ class RAGSystem:
         except Exception as e:
             logger.error(f"Error in document retrieval: {str(e)}")
             raise
-
-    def _extract_keywords(self, text: str) -> List[str]:
-        """핵심 키워드 추출"""
-        # 간단한 키워드 추출 로직
-        keywords = [word for word in text.split() if len(word) > 1]
-        return keywords[:3]  # 상위 3개 키워드 사용
-
-    def _verify_document_relevance(self, query: str, document: str) -> bool:
-        """문서 관련성 검증"""
-        # 쿼리 키워드 추출
-        query_keywords = self._extract_keywords(query)
-        
-        # 문서 내 키워드 존재 여부 확인
-        document_lower = document.lower()
-        keyword_matches = sum(1 for keyword in query_keywords 
-                            if keyword.lower() in document_lower)
-        
-        # 최소 매칭 기준 설정
-        min_matches = len(query_keywords) // 2
-        return keyword_matches >= min_matches
-
-
     
     def validate_answer(self, predicted_answer: str, context_docs: List[Dict]) -> bool:
         if not context_docs:
@@ -224,17 +202,6 @@ class RAGSystem:
             logger.error(f"Error generating answer: {str(e)}")
             raise
 
-    def _format_options(self, options: Dict[str, str]) -> str:
-        """
-        선택지 형식을 지정합니다.
-        
-        Args:
-            options (Dict[str, str]): 선택지 딕셔너리
-            
-        Returns:
-            str: 형식화된 선택지 문자열
-        """
-        return "\n".join([f"{k}) {v}" for k, v in options.items()])
 
     # Comparison Prompting
     def _construct_prompt(self, question: str, options: Dict[str, str], context: str) -> str:
@@ -283,10 +250,3 @@ class RAGSystem:
 
     Your Final Answer (A/B/C/D): """
 
-def main():
-    rag = RAGSystem()
-    rag.initialize()
-    logger.info("RAG system initialized successfully")
-
-if __name__ == "__main__":
-    main()

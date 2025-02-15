@@ -16,16 +16,10 @@ class KMMLUDataLoader:
             data_dir (str, optional): 데이터 디렉토리 경로. 
         """
         self.data_dir = Path(data_dir) if data_dir else Path(__file__).parents[3] / 'data'
-        self.raw_dir = self.data_dir / 'raw'
-        self.processed_dir = self.data_dir / 'processed'
-        
-        # 디렉토리 생성
-        self.raw_dir.mkdir(parents=True, exist_ok=True)
-        self.processed_dir.mkdir(parents=True, exist_ok=True)
         
     def load_criminal_law_test(self) -> pd.DataFrame:
-        """Criminal Law 테스트 데이터셋을 로드합니다."""
-        test_path = self.raw_dir / 'data_Criminal-Law-test.csv'
+        """Criminal Law 테스트 데이터셋 로드"""
+        test_path = self.data_dir / 'data_Criminal-Law-test.csv'
         
         try:
             df = pd.read_csv(test_path)
@@ -59,32 +53,3 @@ class KMMLUDataLoader:
             return False
             
         return True
-
-    def get_question_answer_pairs(self) -> Tuple[list, list]:
-        """질문과 정답을 추출하여 반환"""
-        df = self.load_criminal_law_test()
-        
-        if not self.validate_data(df):
-            raise ValueError("Invalid data format")
-            
-        questions = []
-        answers = []
-        
-        for _, row in df.iterrows():
-            question = f"""Question: {row['question']}
-            Options:
-            A) {row['A']}
-            B) {row['B']}
-            C) {row['C']}
-            D) {row['D']}"""
-            
-            questions.append(question)
-            answers.append(row['answer'])
-            
-        return questions, answers
-
-    def save_processed_data(self, df: pd.DataFrame, filename: str):
-        """처리된 데이터를 저장"""
-        output_path = self.processed_dir / filename
-        df.to_csv(output_path, index=False)
-        logger.info(f"Saved processed data to {output_path}")

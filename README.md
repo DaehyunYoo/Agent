@@ -1,4 +1,4 @@
-# 뤼튼테크놀로지스 AI팀 인턴 - 과제 전형
+# AI Agent with RAG System for KMMLU Criminal Law Test Set
 
 KMMLU의 Criminal Law 카테고리 테스트셋을 평가하는 Agent System입니다. 
 GPT-4o-mini와 text-embedding-3-small을 활용한 RAG 시스템을 구현했습니다.

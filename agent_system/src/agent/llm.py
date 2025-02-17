@@ -85,7 +85,7 @@ class LLMAgent:
                 batch_job = self.client.batches.retrieve(batch_job.id)
                 if batch_job.status == "completed":
                     break
-                await asyncio.sleep(5)  # 5초마다 상태 체크
+                await asyncio.sleep(3)  
 
             # 결과 파일 다운로드
             result_file = self.client.files.content(batch_job.output_file_id).content

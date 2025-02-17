@@ -203,7 +203,6 @@ class RAGSystem:
             raise
 
 
-    # Comparison Prompting
     def _construct_prompt(self, question: str, options: Dict[str, str], context: str) -> str:
         options_text = "\n".join([f"{k}) {v}" for k, v in options.items()])
         
@@ -249,4 +248,3 @@ class RAGSystem:
     - Focus on similarities with precedent cases
 
     Your Final Answer (A/B/C/D): """
-

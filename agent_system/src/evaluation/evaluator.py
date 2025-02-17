@@ -18,8 +18,8 @@ class KMMLUEvaluator:
     def __init__(self):
         self.rag_system = RAGSystem()
         self.data_loader = KMMLUDataLoader()
-        self.results_dir = Path(__file__).parents[3] / 'outputs'
-        self.results_dir.mkdir(parents=True, exist_ok=True)
+        self.output_dir = Path(__file__).parents[3] / 'outputs'
+        self.output_dir.mkdir(exist_ok=True)
         
     def initialize(self):
         try:
@@ -28,8 +28,6 @@ class KMMLUEvaluator:
                 raise ValueError("OPENAI_API_KEY not found in environment variables")
             
             self.rag_system.initialize()
-            (self.results_dir / 'batch_api').mkdir(parents=True, exist_ok=True)
-            
             logger.info("Evaluation system initialized successfully")
         except Exception as e:
             logger.error(f"Error initializing evaluation system: {str(e)}")
@@ -71,8 +69,44 @@ class KMMLUEvaluator:
             
             logger.info(f"Prepared {len(all_prompts)} prompts for evaluation")
             
+            # Save batch API input
+            input_tasks = []
+            for idx, prompt in enumerate(all_prompts):
+                task = {
+                    "custom_id": f"task-{idx}",
+                    "method": "POST",
+                    "url": "/v1/chat/completions",
+                    "body": {
+                        "model": self.rag_system.llm.model,
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": """You are an expert in criminal law. 
+                                Analyze the question carefully and select the most appropriate answer 
+                                from the given options. Provide your answer as a single letter (A, B, C, or D)."""
+                            },
+                            {
+                                "role": "user",
+                                "content": prompt
+                            }
+                        ],
+                        "temperature": 0,
+                        "max_tokens": 50
+                    }
+                }
+                input_tasks.append(task)
+
+            with open(self.output_dir / 'batch_api_input.jsonl', 'w', encoding='utf-8') as f:
+                for task in input_tasks:
+                    f.write(json.dumps(task) + '\n')
+            
             # Batch API를 통한 응답 생성
             responses = await self.rag_system.llm.generate_batch_answers_async(all_prompts)
+            
+            # Save batch API output
+            with open(self.output_dir / 'batch_api_output.jsonl', 'w', encoding='utf-8') as f:
+                for response in responses:
+                    f.write(json.dumps(response) + '\n')
             
             # 결과 처리
             all_results = []
@@ -136,16 +170,11 @@ class KMMLUEvaluator:
 
     def save_results(self, results: Dict[str, Any]):
         try:
-            timestamp = time.strftime("%Y%m%d_%H%M%S")
-            result_dir = self.results_dir / f'evaluation_{timestamp}'
-            result_dir.mkdir(parents=True, exist_ok=True)
-            
-            # 결과 저장
-            results_path = result_dir / 'evaluation_results.json'
-            with open(results_path, 'w', encoding='utf-8') as f:
+            # Save evaluation results
+            with open(self.output_dir / 'evaluation_results.json', 'w', encoding='utf-8') as f:
                 json.dump(results, f, ensure_ascii=False, indent=2)
             
-            # 메트릭 저장
+            # Save evaluation metrics
             metrics_df = pd.DataFrame([{
                 'total_questions': results['total_questions'],
                 'processed_questions': results['processed_questions'],
@@ -156,10 +185,9 @@ class KMMLUEvaluator:
                 'average_tokens_per_question': results['average_tokens_per_question']
             }])
             
-            metrics_path = result_dir / 'evaluation_metrics.csv'
-            metrics_df.to_csv(metrics_path, index=False)
+            metrics_df.to_csv(self.output_dir / 'evaluation_metrics.csv', index=False)
             
-            logger.info(f"Results saved to {result_dir}")
+            logger.info("Results saved successfully")
             
         except Exception as e:
             logger.error(f"Error saving results: {str(e)}")
@@ -177,7 +205,6 @@ async def main_async():
         
         if results is not None:
             evaluator.save_results(results)
-            logger.info("Results saved successfully")
             logger.info(f"Accuracy: {results['accuracy']:.2%}")
             logger.info(f"F1 Score: {results['f1_score']:.2%}")
         

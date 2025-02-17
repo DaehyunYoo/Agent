@@ -5,6 +5,7 @@ from .llm import LLMAgent
 from .embedding import EmbeddingAgent
 from ..data.loader import KMMLUDataLoader
 from .hybrid_retriever import HybridRetriever
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -15,9 +16,9 @@ class RAGSystem:
     임베딩 기반 검색과 LLM을 결합하여 더 정확한 답변 생성
     """
     
-    def __init__(self):
+    def __init__(self, output_dir: Path):
         """RAG 시스템 초기화"""
-        self.llm = LLMAgent()
+        self.llm = LLMAgent(output_dir)
         self.embedding_agent = EmbeddingAgent()
         self.data_loader = KMMLUDataLoader()
         self.hybrid_retriever = HybridRetriever()
@@ -60,24 +61,6 @@ class RAGSystem:
         D) {row['D']}
         Answer: {row['answer']}
         Category: {row['Category']}"""
-
-    def _enhance_query(self, query: str) -> List[float]:
-        """
-        검색 쿼리를 강화
-        
-        Args:
-            query (str): 원본 쿼리
-            
-        Returns:
-            List[float]: 강화된 쿼리의 임베딩
-        """
-        try:
-            # 쿼리 임베딩 생성
-            query_embedding = self.embedding_agent.create_embedding(query)
-            return query_embedding
-        except Exception as e:
-            logger.error(f"Error enhancing query: {str(e)}")
-            raise
 
     def retrieve_relevant_documents(self, query: str, top_k: int = 9) -> List[Dict[str, Any]]:
         """하이브리드 검색을 통한 관련 문서 검색"""
@@ -122,56 +105,8 @@ class RAGSystem:
             logger.error(f"Error in document retrieval: {str(e)}")
             raise
     
-    def validate_answer(self, predicted_answer: str, context_docs: List[Dict]) -> bool:
-        """
-        단순화된 답변 검증
-        가장 유사도가 높은 문서의 답안만 확인
-        """
-        if not context_docs or not predicted_answer:
-            return True
-            
-        # 가장 유사도가 높은 문서만 확인
-        top_doc = max(context_docs, key=lambda x: x['similarity'])
-        if 'Answer: ' not in top_doc['document']:
-            return True
-            
-        answer_num = top_doc['document'].split('Answer: ')[1][0]
-        answer_letter = chr(ord('A') + int(answer_num) - 1)
-        
-        # 유사도가 높은 경우에만 검증 수행
-        if top_doc['similarity'] > 0.8:
-            return predicted_answer == answer_letter
-        
-        return True
-
-    def generate_answer(self, question: str, options: Dict[str, str]) -> Dict[str, Any]:
-        """
-        단순화된 답변 생성
-        """
-        try:
-            relevant_docs = self.retrieve_relevant_documents(question)
-            context = "\n\n".join([doc['document'] for doc in relevant_docs])
-            prompt = self._construct_prompt(question, options, context)
-            
-            response = self.llm.generate_answer(prompt)
-            predicted_answer = response['answer'].strip().upper()
-            
-            # 간단한 검증만 수행
-            is_valid = self.validate_answer(predicted_answer, relevant_docs)
-            
-            return {
-                'answer': predicted_answer,
-                'relevant_documents': relevant_docs,
-                'model': response.get('model'),
-                'tokens_used': response.get('tokens_used'),
-                'validation_passed': is_valid
-            }
-                
-        except Exception as e:
-            logger.error(f"Error generating answer: {str(e)}")
-            raise
-
     def _construct_prompt(self, question: str, options: Dict[str, str], context: str) -> str:
+        """프롬프트 구성"""
         options_text = "\n".join([f"{k}) {v}" for k, v in options.items()])
         
         return f"""As a criminal law expert, analyze the following question using the provided context. Select the most accurate answer (A, B, C, or D).

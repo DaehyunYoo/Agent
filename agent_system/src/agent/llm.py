@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class LLMAgent:
-    def __init__(self):
+    def __init__(self, output_dir: Path):
         """LLM Agent 초기화"""
         self.api_key = os.getenv('OPENAI_API_KEY')
         if not self.api_key:
@@ -25,53 +25,63 @@ class LLMAgent:
             
         self.client = OpenAI(api_key=self.api_key)
         self.model = "gpt-4o-mini"
-        self.output_dir = Path('outputs')
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.output_dir = output_dir
+        
+    def _create_batch_task(self, prompt: str, idx: int) -> Dict[str, Any]:
+        """Batch API 태스크 생성"""
+        return {
+            "custom_id": f"task-{idx}",
+            "method": "POST",
+            "url": "/v1/chat/completions",
+            "body": {
+                "model": self.model,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": """You are an expert in criminal law. 
+                        Analyze the question carefully and select the most appropriate answer 
+                        from the given options. Provide your answer as a single letter (A, B, C, or D)."""
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "temperature": 0,
+                "max_tokens": 50
+            }
+        }
+
+    def _save_batch_input(self, tasks: List[Dict[str, Any]], filename: str = 'batch_api_input.jsonl'):
+        """Batch API 입력 파일 저장"""
+        file_path = self.output_dir / filename
+        with open(file_path, 'w', encoding='utf-8') as f:
+            for task in tasks:
+                f.write(json.dumps(task) + '\n')
+        return file_path
+
+    def _save_batch_output(self, content: bytes, filename: str = 'batch_api_output.jsonl'):
+        """Batch API 출력 파일 저장"""
+        file_path = self.output_dir / filename
+        with open(file_path, 'wb') as f:
+            f.write(content)
+        return file_path
 
     async def generate_batch_answers_async(self, prompts: List[str], batch_size: int = 50) -> List[Dict[str, Any]]:
         """Batch API를 사용한 대량 처리"""
         try:
             # 배치 요청 준비
-            tasks = []
-            for idx, prompt in enumerate(prompts):
-                task = {
-                    "custom_id": f"task-{idx}",
-                    "method": "POST",
-                    "url": "/v1/chat/completions",
-                    "body": {
-                        "model": self.model,
-                        "messages": [
-                            {
-                                "role": "system",
-                                # "content": """You are an expert in criminal law. 
-                                # Analyze the question carefully and select the most appropriate answer 
-                                # from the given options. Provide your answer as a single letter (A, B, C, or D)."""
-                                "content": """You are an expert in Korean criminal law. Carefully analyze the question, considering Korean legal context and principles. Evaluate each option systematically, thinking step-by-step about legal implications. Select the most appropriate answer and provide your final choice as a single letter (A, B, C, or D) without additional explanation."""
-                            },
-                            {
-                                "role": "user",
-                                "content": prompt
-                            }
-                        ],
-                        "temperature": 0,
-                        "max_tokens": 50
-                    }
-                }
-                tasks.append(task)
+            tasks = [self._create_batch_task(prompt, idx) for idx, prompt in enumerate(prompts)]
+            
+            # 입력 파일 저장
+            input_file = self._save_batch_input(tasks)
 
-            # JSONL 파일 생성
-            input_file = self.output_dir / 'batch_input.jsonl'
-            with open(input_file, 'w', encoding='utf-8') as f:
-                for task in tasks:
-                    f.write(json.dumps(task) + '\n')
-
-            # 파일 업로드
+            # 파일 업로드 및 배치 작업 생성
             batch_file = self.client.files.create(
                 file=open(input_file, 'rb'),
                 purpose="batch"
             )
 
-            # 배치 작업 생성
             batch_job = self.client.batches.create(
                 input_file_id=batch_file.id,
                 endpoint="/v1/chat/completions",
@@ -87,12 +97,9 @@ class LLMAgent:
                     break
                 await asyncio.sleep(3)  
 
-            # 결과 파일 다운로드 (최종 결과만 저장)
+            # 결과 파일 저장
             result_file = self.client.files.content(batch_job.output_file_id).content
-            result_file_path = self.output_dir / 'batch_output.jsonl'
-            
-            with open(result_file_path, 'wb') as f:
-                f.write(result_file)
+            result_file_path = self._save_batch_output(result_file)
 
             # 결과 처리
             results = []
@@ -107,8 +114,7 @@ class LLMAgent:
                     results.append(response)
 
             # 원래 순서대로 결과 정렬
-            sorted_results = sorted(results, key=lambda x: int(x['task_id'].split('-')[1]))
-            return sorted_results
+            return sorted(results, key=lambda x: int(x['task_id'].split('-')[1]))
 
         except Exception as e:
             logger.error(f"Error in batch processing: {str(e)}")

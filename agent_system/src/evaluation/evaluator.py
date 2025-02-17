@@ -16,12 +16,16 @@ logger = logging.getLogger(__name__)
 
 class KMMLUEvaluator:
     def __init__(self):
-        self.rag_system = RAGSystem()
-        self.data_loader = KMMLUDataLoader()
+        # 출력 디렉토리 설정
         self.output_dir = Path(__file__).parents[3] / 'outputs'
         self.output_dir.mkdir(exist_ok=True)
         
+        # 시스템 초기화
+        self.rag_system = RAGSystem(self.output_dir)
+        self.data_loader = KMMLUDataLoader()
+        
     def initialize(self):
+        """평가 시스템 초기화"""
         try:
             logger.info("Initializing evaluation system...")
             if not os.getenv('OPENAI_API_KEY'):
@@ -34,11 +38,12 @@ class KMMLUEvaluator:
             raise
 
     async def evaluate_test_set_async(self) -> Dict[str, Any]:
+        """테스트 세트 평가 실행"""
         try:
             df = self.data_loader.load_criminal_law_test()
             logger.info(f"Loaded test set with {len(df)} questions")
             
-            # 프롬프트 준비
+            # 프롬프트 및 메타데이터 준비
             all_prompts = []
             all_metadata = []
             
@@ -69,44 +74,8 @@ class KMMLUEvaluator:
             
             logger.info(f"Prepared {len(all_prompts)} prompts for evaluation")
             
-            # Save batch API input
-            input_tasks = []
-            for idx, prompt in enumerate(all_prompts):
-                task = {
-                    "custom_id": f"task-{idx}",
-                    "method": "POST",
-                    "url": "/v1/chat/completions",
-                    "body": {
-                        "model": self.rag_system.llm.model,
-                        "messages": [
-                            {
-                                "role": "system",
-                                "content": """You are an expert in criminal law. 
-                                Analyze the question carefully and select the most appropriate answer 
-                                from the given options. Provide your answer as a single letter (A, B, C, or D)."""
-                            },
-                            {
-                                "role": "user",
-                                "content": prompt
-                            }
-                        ],
-                        "temperature": 0,
-                        "max_tokens": 50
-                    }
-                }
-                input_tasks.append(task)
-
-            with open(self.output_dir / 'batch_api_input.jsonl', 'w', encoding='utf-8') as f:
-                for task in input_tasks:
-                    f.write(json.dumps(task) + '\n')
-            
             # Batch API를 통한 응답 생성
             responses = await self.rag_system.llm.generate_batch_answers_async(all_prompts)
-            
-            # Save batch API output
-            with open(self.output_dir / 'batch_api_output.jsonl', 'w', encoding='utf-8') as f:
-                for response in responses:
-                    f.write(json.dumps(response) + '\n')
             
             # 결과 처리
             all_results = []
@@ -164,17 +133,18 @@ class KMMLUEvaluator:
             logger.error(f"Error evaluating test set: {str(e)}")
             raise
             
-    # 동기적 래퍼 메서드
     def evaluate_test_set(self) -> Dict[str, Any]:
+        """동기적 평가 래퍼 메서드"""
         return asyncio.run(self.evaluate_test_set_async())
 
     def save_results(self, results: Dict[str, Any]):
+        """평가 결과 저장"""
         try:
-            # Save evaluation results
+            # 평가 결과 저장
             with open(self.output_dir / 'evaluation_results.json', 'w', encoding='utf-8') as f:
                 json.dump(results, f, ensure_ascii=False, indent=2)
             
-            # Save evaluation metrics
+            # 평가 지표 저장
             metrics_df = pd.DataFrame([{
                 'total_questions': results['total_questions'],
                 'processed_questions': results['processed_questions'],
@@ -186,7 +156,6 @@ class KMMLUEvaluator:
             }])
             
             metrics_df.to_csv(self.output_dir / 'evaluation_metrics.csv', index=False)
-            
             logger.info("Results saved successfully")
             
         except Exception as e:
@@ -194,6 +163,7 @@ class KMMLUEvaluator:
             raise
 
 async def main_async():
+    """비동기 메인 함수"""
     try:
         total_start_time = time.time()
         
@@ -216,6 +186,7 @@ async def main_async():
         raise
 
 def main():
+    """메인 함수"""
     asyncio.run(main_async())
 
 if __name__ == "__main__":

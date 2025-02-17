@@ -139,7 +139,7 @@ class KMMLUEvaluator:
             if not all_results:
                 raise ValueError("No valid results were generated")
             
-            # 결과 통계 계산
+            # 결과 계산
             correct_predictions = sum(1 for r in all_results if r['is_correct'])
             total_tokens = sum(r['tokens_used'] for r in all_results)
             
@@ -164,8 +164,8 @@ class KMMLUEvaluator:
             logger.error(f"Error evaluating test set: {str(e)}")
             raise
             
+    # 동기적 래퍼 메서드
     def evaluate_test_set(self) -> Dict[str, Any]:
-        """동기적 래퍼 메서드"""
         return asyncio.run(self.evaluate_test_set_async())
 
     def save_results(self, results: Dict[str, Any]):

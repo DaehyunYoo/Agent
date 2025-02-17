@@ -76,7 +76,7 @@ class EmbeddingAgent:
     def find_most_similar(self, 
                         query_embedding: List[float], 
                         candidate_embeddings: List[List[float]], 
-                        top_k: int = 9,           # top_k 기본값 증가
+                        top_k: int = 9,           # top_k 개의 후보 반환
                         similarity_threshold: float = 0.7  # 유사도 임계값
                         ) -> List[Dict[str, Any]]:
         """쿼리 임베딩과 가장 유사한 상위 k개의 후보 임베딩 찾기"""

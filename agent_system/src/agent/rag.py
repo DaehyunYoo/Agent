@@ -123,72 +123,41 @@ class RAGSystem:
             raise
     
     def validate_answer(self, predicted_answer: str, context_docs: List[Dict]) -> bool:
-        if not context_docs:
+        """
+        단순화된 답변 검증
+        가장 유사도가 높은 문서의 답안만 확인
+        """
+        if not context_docs or not predicted_answer:
             return True
             
-        # 가중치 점수 계산
-        answer_scores = {'A': 0.0, 'B': 0.0, 'C': 0.0, 'D': 0.0}
-        total_weight = 0.0
-        
-        for doc in context_docs:
-            if 'Answer: ' in doc['document']:
-                answer_num = doc['document'].split('Answer: ')[1][0]
-                answer_letter = chr(ord('A') + int(answer_num) - 1)
-                
-                # 유사도 점수를 가중치로 사용
-                weight = doc['similarity'] ** 2  # 제곱하여 높은 유사도에 더 큰 가중치
-                answer_scores[answer_letter] += weight
-                total_weight += weight
-        
-        if total_weight == 0:
+        # 가장 유사도가 높은 문서만 확인
+        top_doc = max(context_docs, key=lambda x: x['similarity'])
+        if 'Answer: ' not in top_doc['document']:
             return True
             
-        # 정규화된 점수 계산
-        normalized_scores = {
-            k: v/total_weight for k, v in answer_scores.items()
-        }
+        answer_num = top_doc['document'].split('Answer: ')[1][0]
+        answer_letter = chr(ord('A') + int(answer_num) - 1)
         
-        # 최고 점수와 두 번째 점수의 차이 계산
-        sorted_scores = sorted(normalized_scores.items(), key=lambda x: x[1], reverse=True)
-        score_diff = sorted_scores[0][1] - sorted_scores[1][1]
-        
-        # 점수 차이가 충분히 크면 검증
-        if score_diff > 0.3:  # 임계값 상향 조정
-            return predicted_answer == sorted_scores[0][0]
+        # 유사도가 높은 경우에만 검증 수행
+        if top_doc['similarity'] > 0.8:
+            return predicted_answer == answer_letter
         
         return True
 
     def generate_answer(self, question: str, options: Dict[str, str]) -> Dict[str, Any]:
         """
-        RAG를 사용하여 답변 생성
-        
-        Args:
-            question (str): 질문
-            options (Dict[str, str]): 선택지 {"A": "...", "B": "...", ...}
-            
-        Returns:
-            Dict[str, Any]: 생성된 답변과 관련 정보
+        단순화된 답변 생성
         """
         try:
-            # 관련 문서 검색
             relevant_docs = self.retrieve_relevant_documents(question)
-            
-            # 프롬프트 구성
             context = "\n\n".join([doc['document'] for doc in relevant_docs])
             prompt = self._construct_prompt(question, options, context)
             
-            # LLM을 사용하여 답변 생성
             response = self.llm.generate_answer(prompt)
             predicted_answer = response['answer'].strip().upper()
             
-            # 답변 검증
+            # 간단한 검증만 수행
             is_valid = self.validate_answer(predicted_answer, relevant_docs)
-            
-            # 검증 실패 시 가장 유사한 문서의 답변 사용
-            if not is_valid and relevant_docs:
-                context_answer = relevant_docs[0]['document'].split('Answer: ')[1][0]
-                predicted_answer = chr(ord('A') + int(context_answer) - 1)
-                logger.info(f"Answer validation failed. Using most similar document's answer: {predicted_answer}")
             
             return {
                 'answer': predicted_answer,
@@ -202,49 +171,18 @@ class RAGSystem:
             logger.error(f"Error generating answer: {str(e)}")
             raise
 
-
     def _construct_prompt(self, question: str, options: Dict[str, str], context: str) -> str:
         options_text = "\n".join([f"{k}) {v}" for k, v in options.items()])
         
-        return f"""[Role]: You are a highly qualified criminal law expert specializing in comparative legal analysis.
+        return f"""As a criminal law expert, analyze the following question using the provided context. Select the most accurate answer (A, B, C, or D).
 
-    [Context Information]: 
-    Review these similar cases and legal principles carefully:
+    Context:
     {context}
 
-    [Current Question]:
+    Question:
     {question}
 
-    [Options for Analysis]:
+    Options:
     {options_text}
 
-    [Comparative Analysis Framework]:
-    1. Pattern Recognition:
-    - Identify recurring legal principles in the context cases
-    - Find similar fact patterns or legal questions
-    
-    2. Similarity Analysis:
-    - Match key elements of current question with context cases
-    - Note aligned legal principles and reasoning patterns
-    
-    3. Distinction Analysis:
-    - Identify any meaningful differences from context cases
-    - Consider how differences affect the application of legal principles
-
-    4. Option Evaluation:
-    - Compare each option against similar cases
-    - Assess which option best matches established patterns
-    - Consider both similarities and distinctions
-
-    [Decision Process]:
-    1. First, establish patterns from context cases
-    2. Then, map current question to these patterns
-    3. Finally, select the option that best aligns with established legal patterns
-
-    [Response Requirements]:
-    - Provide ONLY a single letter (A, B, C, or D)
-    - Base your choice on pattern matching with context cases
-    - Do not explain your reasoning
-    - Focus on similarities with precedent cases
-
-    Your Final Answer (A/B/C/D): """
+    Answer with only a single letter (A/B/C/D):"""

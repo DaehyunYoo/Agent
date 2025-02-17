@@ -25,10 +25,10 @@ class LLMAgent:
             
         self.client = OpenAI(api_key=self.api_key)
         self.model = "gpt-4o-mini"
-        self.output_dir = Path('outputs/batch_api')
+        self.output_dir = Path('outputs')
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    async def generate_batch_answers_async(self, prompts: List[str], batch_size: int = 20) -> List[Dict[str, Any]]:
+    async def generate_batch_answers_async(self, prompts: List[str], batch_size: int = 50) -> List[Dict[str, Any]]:
         """Batch API를 사용한 대량 처리"""
         try:
             # 배치 요청 준비
@@ -43,9 +43,10 @@ class LLMAgent:
                         "messages": [
                             {
                                 "role": "system",
-                                "content": """You are an expert in criminal law. 
-                                Analyze the question carefully and select the most appropriate answer 
-                                from the given options. Provide your answer as a single letter (A, B, C, or D)."""
+                                # "content": """You are an expert in criminal law. 
+                                # Analyze the question carefully and select the most appropriate answer 
+                                # from the given options. Provide your answer as a single letter (A, B, C, or D)."""
+                                "content": """You are an expert in Korean criminal law. Carefully analyze the question, considering Korean legal context and principles. Evaluate each option systematically, thinking step-by-step about legal implications. Select the most appropriate answer and provide your final choice as a single letter (A, B, C, or D) without additional explanation."""
                             },
                             {
                                 "role": "user",
@@ -59,8 +60,7 @@ class LLMAgent:
                 tasks.append(task)
 
             # JSONL 파일 생성
-            timestamp = int(time.time())
-            input_file = self.output_dir / f'batch_input_{timestamp}.jsonl'
+            input_file = self.output_dir / 'batch_input.jsonl'
             with open(input_file, 'w', encoding='utf-8') as f:
                 for task in tasks:
                     f.write(json.dumps(task) + '\n')
@@ -87,9 +87,9 @@ class LLMAgent:
                     break
                 await asyncio.sleep(3)  
 
-            # 결과 파일 다운로드
+            # 결과 파일 다운로드 (최종 결과만 저장)
             result_file = self.client.files.content(batch_job.output_file_id).content
-            result_file_path = self.output_dir / f'batch_output_{timestamp}.jsonl'
+            result_file_path = self.output_dir / 'batch_output.jsonl'
             
             with open(result_file_path, 'wb') as f:
                 f.write(result_file)
